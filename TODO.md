@@ -8,14 +8,14 @@
 - [x] Launch script
 
 ## 🚧 Phase 2: Core Features (NEXT)
-- [ ] Fix layout issues (ensure dual pane displays correctly)
-- [ ] Better file preview (syntax highlighting)
-- [ ] File operations (copy, move, delete, rename)
-- [ ] Keyboard shortcuts for operations
-- [ ] Status bar with file info
+- [x] Fix layout issues (responsive split/stack behavior)
+- [x] Better file preview (syntax highlighting)
+- [x] File operations (copy, move, delete, rename)
+- [x] Keyboard shortcuts for operations
+- [x] Status bar with file info
 
 ## 📋 Phase 3: Enhanced UX
-- [ ] Search/filter functionality
+- [x] Search/filter functionality (MVP)
 - [ ] Bookmarks/favorites
 - [ ] Multiple tabs
 - [ ] Color themes

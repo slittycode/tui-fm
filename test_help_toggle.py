@@ -16,11 +16,16 @@ class TestableFileManagerApp(FileManagerApp):
         self.current_path = Path("/tmp")
         self.selected_file = None
         self.help_visible = False
+        self.filter_query = ""
+        self.command_mode = None
+        self.delete_confirmation_path = None
+        self.last_action = ""
         self._widgets = {
             "#preview-content": FakeWidget(),
             "#preview-header": FakeWidget(),
             "#preview-footer": FakeWidget(),
             "#tree-footer": FakeWidget(),
+            "#status-bar": FakeWidget(),
         }
 
     def query_one(self, selector, *args, **kwargs):

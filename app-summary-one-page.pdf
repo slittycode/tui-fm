@@ -1,0 +1,67 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 2690 >>
+stream
+BT /F2 16 Tf 54 760 Td (Rich TUI File Manager - One-Page Summary) Tj ET
+BT /F2 11 Tf 54 738 Td (What It Is) Tj ET
+BT /F1 9 Tf 54 722 Td (Rich TUI File Manager is a Python terminal application built with Textual for file browsing and preview.) Tj ET
+BT /F1 9 Tf 54 710 Td (It presents a dual-pane interface: a directory tree on the left and a file or folder preview on the) Tj ET
+BT /F1 9 Tf 54 698 Td (right.) Tj ET
+BT /F2 11 Tf 54 686 Td (Who It's For) Tj ET
+BT /F1 9 Tf 54 670 Td (Primary persona: Not found in repo.) Tj ET
+BT /F1 9 Tf 54 658 Td (Inferred from README and key bindings: keyboard-first terminal users who want fast filesystem) Tj ET
+BT /F1 9 Tf 54 646 Td (navigation.) Tj ET
+BT /F2 11 Tf 54 634 Td (What It Does) Tj ET
+BT /F1 9 Tf 66 618 Td (- Shows a dual-pane layout with DirectoryTree navigation and a preview panel.) Tj ET
+BT /F1 9 Tf 66 606 Td (- Starts at the current user home directory and browses local files and folders.) Tj ET
+BT /F1 9 Tf 66 594 Td (- Previews directory contents with folder/file counts and sample items.) Tj ET
+BT /F1 9 Tf 66 582 Td (- Previews text files with path, size, type metadata and truncates after 10,000 characters.) Tj ET
+BT /F1 9 Tf 66 570 Td (- Applies guardrails: 1MB preview limit, binary-file detection, and permission or missing-file) Tj ET
+BT /F1 9 Tf 78 558 Td (  errors.) Tj ET
+BT /F1 9 Tf 66 546 Td (- Supports keyboard actions for quit, refresh, help toggle, and clearing selection.) Tj ET
+BT /F1 9 Tf 66 534 Td (- Updates status text in pane headers and footers with file size, item count, and path context.) Tj ET
+BT /F2 11 Tf 54 522 Td (How It Works \(Repo Evidence\)) Tj ET
+BT /F1 9 Tf 66 506 Td (- Entry point: main.py instantiates FileManagerApp and calls app.run\(\).) Tj ET
+BT /F1 9 Tf 66 494 Td (- Core app: app.py defines Textual layout/CSS, bindings, event handlers, and preview logic.) Tj ET
+BT /F1 9 Tf 66 482 Td (- Data flow: user selection or action -> DirectoryTree event/action -> Path stat/read calls ->) Tj ET
+BT /F1 9 Tf 78 470 Td (  preview and footer updates.) Tj ET
+BT /F1 9 Tf 66 458 Td (- Data/services: local filesystem via pathlib.Path and open\(\); external services: Not found in) Tj ET
+BT /F1 9 Tf 78 446 Td (  repo.) Tj ET
+BT /F1 9 Tf 66 434 Td (- Support scripts/tests: run.sh bootstraps venv and launch; tests verify initialization and help) Tj ET
+BT /F1 9 Tf 78 422 Td (  toggle behavior.) Tj ET
+BT /F2 11 Tf 54 410 Td (How To Run \(Minimal\)) Tj ET
+BT /F1 9 Tf 66 394 Td (- python3 -m venv venv) Tj ET
+BT /F1 9 Tf 66 382 Td (- source venv/bin/activate) Tj ET
+BT /F1 9 Tf 66 370 Td (- pip install -r requirements.txt) Tj ET
+BT /F1 9 Tf 66 358 Td (- python main.py  \(or ./run.sh\)) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+6 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000251 00000 n 
+0000002992 00000 n 
+0000003062 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R >>
+startxref
+3137
+%%EOF
