@@ -3,8 +3,8 @@
 Rich TUI File Manager
 A modern terminal-based file manager with dual-pane layout and preview.
 """
-import sys
 from app import FileManagerApp
+
 
 def main():
     app = FileManagerApp()

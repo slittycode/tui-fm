@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Quick test to verify the app loads without errors."""
 import sys
+
 from app import FileManagerApp
 
 try:

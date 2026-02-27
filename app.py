@@ -1,23 +1,27 @@
 import asyncio
-from textual.app import App, ComposeResult
-from textual.containers import Horizontal, Vertical, Container
-from textual.widgets import Header, Footer, Static, Input
-from textual.binding import Binding
-from textual.events import Resize
 from pathlib import Path
+
 from rich.console import Group
 from rich.syntax import Syntax
 from rich.text import Text
+from textual.app import App, ComposeResult
+from textual.binding import Binding
+from textual.containers import Container, Horizontal, Vertical
+from textual.events import Resize
+from textual.widgets import Footer, Header, Input, Static
 
+from bookmarks_manager import BookmarksManager
+from config_manager import ConfigManager
 from filesystem_service import FileSystemService
 from filterable_tree import FilterableDirectoryTree
 
+
 class FileManagerApp(App):
     """A Textual file manager application."""
-    
+
     TITLE = "⚡ File Manager"
     STACK_LAYOUT_WIDTH = 100
-    
+
     CSS = """
     Screen {
         background: $surface;
@@ -173,7 +177,7 @@ class FileManagerApp(App):
         color: $warning;
     }
     """
-    
+
     BINDINGS = [
         Binding("q", "quit", "Quit", key_display="q"),
         Binding("r", "refresh", "Refresh", key_display="r"),
@@ -188,11 +192,15 @@ class FileManagerApp(App):
         Binding("?", "toggle_help", "Help", show=False),
         Binding("ctrl+c", "quit", "Quit", show=False),
         Binding("escape", "clear_selection", "Clear", show=False),
+        Binding("b", "bookmark_current", "Bookmark", key_display="b"),
+        Binding("B", "browse_bookmarks", "Bookmarks", key_display="B"),
     ]
-    
+
     def __init__(self):
         super().__init__()
-        self.current_path = Path.home()
+        self.config = ConfigManager()
+        self.bookmarks = BookmarksManager()
+        self.current_path = self.config.default_path
         self.selected_file = None
         self.help_visible = False
         self.filter_query = ""
@@ -234,11 +242,11 @@ class FileManagerApp(App):
     def on_resize(self, event: Resize) -> None:
         """Re-evaluate layout when the terminal size changes."""
         self._apply_layout_mode(event.size.width)
-    
+
     def compose(self) -> ComposeResult:
         """Create child widgets for the app."""
         yield Header()
-        
+
         with Horizontal(id="main-container"):
             # Left pane - Directory Tree
             with Vertical(id="left-pane"):
@@ -246,7 +254,7 @@ class FileManagerApp(App):
                 with Container(id="tree-container"):
                     yield FilterableDirectoryTree(str(self.current_path), id="tree")
                 yield Static(f"🏠 {self.current_path}", id="tree-footer")
-            
+
             # Right pane - Preview
             with Vertical(id="right-pane"):
                 with Container(id="preview-container"):
@@ -262,7 +270,7 @@ class FileManagerApp(App):
             id="command-input",
         )
         yield Footer()
-    
+
     def _get_welcome_text(self) -> str:
         """Get welcome text for preview pane."""
         return """[bold cyan]Welcome to File Manager![/bold cyan]
@@ -277,7 +285,7 @@ class FileManagerApp(App):
 
 [dim]Select a file or folder to see its contents here.[/dim]
         """
-    
+
     def on_directory_tree_file_selected(self, event: FilterableDirectoryTree.FileSelected) -> None:
         """Handle file selection."""
         file_path = Path(event.path)
@@ -523,7 +531,7 @@ class FileManagerApp(App):
         }
         lexer = extension_to_lexer.get(file_path.suffix.lower())
 
-        renderables = [
+        renderables: list = [
             Text("Content:", style="bold"),
             Text(""),
         ]
@@ -550,7 +558,7 @@ class FileManagerApp(App):
             )
 
         return Group(*renderables)
-    
+
     def update_preview(self, file_path: Path) -> None:
         """Update preview and footer asynchronously for the selected path."""
         self._preview_request_id += 1
@@ -646,7 +654,7 @@ class FileManagerApp(App):
             return {"kind": "large_file", "size": self._format_size(size)}
 
         try:
-            with open(file_path, "r", encoding="utf-8") as handle:
+            with open(file_path, encoding="utf-8") as handle:
                 raw_content = handle.read(10001)
         except UnicodeDecodeError:
             return {"kind": "binary_file", "size": self._format_size(size)}
@@ -790,15 +798,16 @@ class FileManagerApp(App):
     def update_footer(self, file_path: Path) -> None:
         """Backward-compatible wrapper that refreshes the full preview."""
         self.update_preview(file_path)
-    
+
     def _format_size(self, size: int) -> str:
         """Format file size in human-readable format."""
+        size_float: float = float(size)
         for unit in ['B', 'KB', 'MB', 'GB']:
-            if size < 1024.0:
-                return f"{size:.1f} {unit}"
-            size /= 1024.0
-        return f"{size:.1f} TB"
-    
+            if size_float < 1024.0:
+                return f"{size_float:.1f} {unit}"
+            size_float /= 1024.0
+        return f"{size_float:.1f} TB"
+
     def action_refresh(self) -> None:
         """Refresh the directory tree."""
         self._clear_delete_confirmation()
@@ -875,7 +884,7 @@ class FileManagerApp(App):
             self.action_clear_selection()
         except Exception as error:
             self._set_status(f"Delete failed: {error}")
-    
+
     def action_toggle_help(self) -> None:
         """Show help information."""
         self._clear_delete_confirmation()
@@ -891,10 +900,10 @@ class FileManagerApp(App):
         preview = self.query_one("#preview-content", Static)
         header = self.query_one("#preview-header", Static)
         footer = self.query_one("#preview-footer", Static)
-        
+
         header.update("❓ Help & Keyboard Shortcuts")
         footer.update("Press h again to close help")
-        
+
         help_text = """[bold cyan]╔═══════════════════════════════════════════════════════╗[/bold cyan]
 [bold cyan]║          FILE MANAGER - HELP & SHORTCUTS          ║[/bold cyan]
 [bold cyan]╚═══════════════════════════════════════════════════════╝[/bold cyan]
@@ -945,11 +954,48 @@ class FileManagerApp(App):
   • Large files show size instead of content
   • Binary files are detected automatically
 
+[bold yellow]🔖 Bookmarks[/bold yellow]
+  [green]b[/green]             Bookmark current directory
+  [green]B[/green]             Browse all bookmarks
+
 [bold cyan]═══════════════════════════════════════════════════════[/bold cyan]
 [dim]Press [bold]h[/bold] to close this help screen[/dim]
         """
         preview.update(help_text)
-    
+
+    def action_bookmark_current(self) -> None:
+        """Bookmark the current directory."""
+        try:
+            self.bookmarks.add(self.current_path)
+            self._set_status(f"Bookmarked: {self.current_path}")
+        except ValueError as e:
+            self._set_status(f"Bookmark error: {e}")
+
+    def action_browse_bookmarks(self) -> None:
+        """Show bookmarks list in preview pane."""
+        self.help_visible = False
+        preview = self.query_one("#preview-content", Static)
+        header = self.query_one("#preview-header", Static)
+        footer = self.query_one("#preview-footer", Static)
+
+        header.update("🔖 Bookmarks")
+        footer.update(f"{self.bookmarks.count()} bookmark(s)")
+
+        bookmarks = self.bookmarks.list_all()
+        if not bookmarks:
+            content = "[dim italic]No bookmarks yet.[/dim italic]\n\n"
+            content += "[dim]Press [bold]b[/bold] in any directory to add a bookmark.[/dim]"
+        else:
+            content = "[bold cyan]═══ Your Bookmarks ═══[/bold cyan]\n\n"
+            for i, bookmark in enumerate(bookmarks, 1):
+                content += f"[green]{i}.[/green] [bold]{bookmark.name}[/bold]\n"
+                content += f"   [dim]{bookmark.path}[/dim]\n"
+                if i < len(bookmarks):
+                    content += "\n"
+            content += "\n[dim]Navigate to a bookmarked path to quick-access it.[/dim]"
+
+        preview.update(content)
+
     def action_clear_selection(self) -> None:
         """Clear current selection."""
         self._clear_delete_confirmation()
@@ -962,7 +1008,7 @@ class FileManagerApp(App):
         header = self.query_one("#preview-header", Static)
         footer = self.query_one("#preview-footer", Static)
         tree_footer = self.query_one("#tree-footer", Static)
-        
+
         header.update("👁️  Preview")
         footer.update("Ready")
         tree_footer.update(f"🏠 {self.current_path}")

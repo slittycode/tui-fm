@@ -1,28 +1,50 @@
-# Rich TUI File Manager
+# TUI File Manager (TUI FM)
 
 A modern terminal-based file manager built with Python and Textual.
+
+[![CI](https://github.com/user/tui-fm/actions/workflows/ci.yml/badge.svg)](https://github.com/user/tui-fm/actions/workflows/ci.yml)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Features
 
 - 🎨 Beautiful dual-pane interface
 - 📁 Directory tree navigation
-- 👁️ File preview pane with syntax highlighting for common code files
+- 👁️ File preview pane with syntax highlighting for 50+ languages
 - 🛠️ File operations: copy, move, rename, and delete
 - 🔎 Search/filter by filename
+- 🔖 Bookmarks for quick directory access
+- ⚙️ Configurable preferences
 - 📊 Status bar with file info and last action
 - ⌨️ Keyboard-driven workflow
+- 🧪 Comprehensive test suite (70+ tests)
 
 ## Installation
 
+### From Source
+
 ```bash
+# Clone the repository
+git clone https://github.com/user/tui-fm.git
+cd tui-fm
+
 # Create virtual environment
 python3 -m venv venv
 
 # Activate it
-source venv/bin/activate
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
+
+# Install the package (optional)
+pip install -e .
+```
+
+### From PyPI (Coming Soon)
+
+```bash
+pip install tui-fm
 ```
 
 ## Usage
@@ -40,28 +62,150 @@ Or use the launch script:
 ./run.sh
 ```
 
+Or if installed via pip:
+```bash
+tui-fm
+```
+
 ## Keyboard Shortcuts
 
-- `↑/↓` - Navigate files
-- `←/→` - Collapse/expand folders
-- `Enter` - Select file
-- `/` - Start search/filter
-- `f` - Clear active filter
-- `c` - Copy selected file/folder
-- `m` - Move selected file/folder
-- `n` - Rename selected file/folder
-- `d` - Delete selected file/folder (double press)
-- `q` - Quit
-- `r` - Refresh
-- `h` - Help
+### Navigation
+| Key | Action |
+|-----|--------|
+| `↑/↓` | Navigate files |
+| `←/→` | Collapse/expand folders |
+| `Enter` | Select file |
+| `Home/End` | Jump to top/bottom |
+| `Page Up/Down` | Scroll faster |
+
+### File Operations
+| Key | Action |
+|-----|--------|
+| `c` | Copy selected file/folder |
+| `m` | Move selected file/folder |
+| `n` | Rename selected file/folder |
+| `d` | Delete selected file/folder (double press) |
+
+### Workflow
+| Key | Action |
+|-----|--------|
+| `/` | Start search/filter |
+| `f` | Clear active filter |
+| `b` | Bookmark current directory |
+| `B` | Browse bookmarks |
+| `r` | Refresh |
+| `h` or `?` | Toggle help |
+| `q` | Quit |
+| `Esc` | Cancel/clear selection |
+
+## Configuration
+
+Create `~/.tui_fm_config.json` to customize:
+
+```json
+{
+  "default_path": "~/projects",
+  "theme": "dark",
+  "preview_size_limit": 1000000,
+  "show_hidden_files": false,
+  "ignored_patterns": [".git", "__pycache__", "node_modules"],
+  "syntax_highlighting": true,
+  "confirm_delete": true
+}
+```
+
+## Bookmarks
+
+Bookmarks are stored in `~/.tui_fm_bookmarks.json`.
+
+- Press `b` to bookmark the current directory
+- Press `B` to view all bookmarks
+- Bookmarks persist across sessions
+
+## Supported File Types
+
+Syntax highlighting for: Python, JavaScript, TypeScript, JSON, Markdown, YAML, TOML, HTML, CSS, SQL, Go, Rust, Java, C/C++, Shell, and more.
+
+## Testing
+
+```bash
+# Run all tests
+pytest tests/ -v
+
+# Run with coverage
+pytest tests/ -v --cov=app --cov=filesystem_service --cov=filterable_tree
+
+# View HTML coverage report
+open htmlcov/index.html
+```
+
+## Development
+
+```bash
+# Install development dependencies
+pip install -r requirements.txt
+
+# Install pre-commit hooks
+pre-commit install
+
+# Run linting
+ruff check .
+mypy app.py
+
+# Run tests
+pytest
+```
+
+## Project Structure
+
+```
+tui-fm/
+├── app.py                 # Main application UI logic
+├── main.py                # Entry point
+├── filesystem_service.py  # File operations
+├── filterable_tree.py     # Custom directory tree widget
+├── config_manager.py      # Configuration management
+├── bookmarks_manager.py   # Bookmarks management
+├── tests/                 # Test suite
+├── requirements.txt       # Dependencies
+├── pyproject.toml         # Package configuration
+└── README.md              # This file
+```
 
 ## Roadmap
 
-- [x] File operations (copy, move, delete, rename)
-- [x] Search and filter (MVP)
-- [x] Syntax highlighting for code
-- [ ] Image preview support
-- [ ] Bookmarks/favorites
-- [ ] Multiple tabs
-- [ ] Git status indicators
-- [ ] Archive browsing
+See [TODO.md](TODO.md) for the complete roadmap.
+
+### Completed
+- ✅ Dual-pane responsive layout
+- ✅ File preview with syntax highlighting
+- ✅ File operations (copy, move, rename, delete)
+- ✅ Search/filter functionality
+- ✅ Bookmarks system
+- ✅ Configuration system
+- ✅ Comprehensive testing (70+ tests)
+- ✅ CI/CD pipeline
+
+### In Progress
+- 🚧 Git status indicators
+- 🚧 Enhanced preview (markdown render, hex dump)
+
+### Planned
+- Multiple tabs
+- Image preview
+- Archive browsing
+- Disk usage visualization
+- Plugin system
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## License
+
+MIT License - see LICENSE file for details.
+
+## Acknowledgments
+
+- Built with [Textual](https://textual.textualize.io/)
+- Syntax highlighting by [Rich](https://rich.readthedocs.io/)

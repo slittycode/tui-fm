@@ -1,4 +1,4 @@
-# Terminal File Manager (Kiro) - Quick Start
+# Terminal File Manager (TUI FM) - Quick Start
 
 ## ✅ Installation Complete
 
@@ -7,7 +7,7 @@ Your terminal file manager is ready to use!
 **Status:**
 - ✅ Python virtual environment active
 - ✅ Dependencies installed (Textual, Rich)
-- ✅ Shell command configured: `kiro`
+- ✅ Shell command configured: `tui-fm`
 - ✅ 75% complete MVP - fully functional
 
 ---
@@ -16,7 +16,7 @@ Your terminal file manager is ready to use!
 
 Simply type in any terminal:
 ```bash
-kiro
+tui-fm
 ```
 
 This opens the dual-pane file manager in your current directory.
@@ -72,7 +72,7 @@ This opens the dual-pane file manager in your current directory.
 ### Organizing Downloads
 ```bash
 cd ~/Downloads
-kiro
+tui-fm
 # Navigate with arrows
 # Press 'm' to move files to organized folders
 # Press 'd' twice to delete unwanted files
@@ -81,7 +81,7 @@ kiro
 ### Quick Code Browsing
 ```bash
 cd ~/code/projects
-kiro
+tui-fm
 # Navigate directories on left
 # Preview code files on right (syntax highlighted!)
 # No need to open full editor just to peek
@@ -90,7 +90,7 @@ kiro
 ### Batch File Operations
 ```bash
 cd ~/Documents
-kiro
+tui-fm
 # Press '/' to filter files
 # Type: ".pdf"  (shows only PDFs)
 # Use 'c' to copy them to a backup folder
@@ -100,7 +100,7 @@ kiro
 ### Project Cleanup
 ```bash
 cd ~/code/old-project
-kiro
+tui-fm
 # Visually inspect what's taking space
 # Delete node_modules: navigate → 'd' twice
 # Clean up temp files quickly
@@ -110,16 +110,16 @@ kiro
 
 ## 1-Week Trial Challenge
 
-**Test if `kiro` fits your workflow:**
+**Test if `tui-fm` fits your workflow:**
 
 ### This Week
-- [ ] Launch `kiro` instead of `ls` at least 3 times
+- [ ] Launch `tui-fm` instead of `ls` at least 3 times
 - [ ] Try file operations (copy, move, rename)
 - [ ] Use preview pane to check file contents
 - [ ] Test search/filter with '/'
 
 ### Evaluation Questions (Feb 13)
-1. Did you reach for `kiro` naturally, or did it feel forced?
+1. Did you reach for `tui-fm` naturally, or did it feel forced?
 2. Was it faster than Finder + terminal combo?
 3. Did syntax-highlighted preview save you time?
 4. Do you miss features that would make it indispensable?
@@ -178,7 +178,7 @@ Kiro is for **visual navigation + quick operations**.
 
 ## Comparison to Alternatives
 
-| Feature | kiro | Finder (GUI) | `ls` + bash | ranger | Midnight Commander |
+| Feature | tui-fm | Finder (GUI) | `ls` + bash | ranger | Midnight Commander |
 |---------|------|--------------|-------------|--------|-------------------|
 | Speed | Fast | Slow | Very Fast | Fast | Medium |
 | Preview | Yes | Yes | No | Yes | Limited |
@@ -187,13 +187,13 @@ Kiro is for **visual navigation + quick operations**.
 | Mouse support | No | Yes | No | No | Yes |
 | Learning curve | Low | None | None | Medium | High |
 
-**kiro's sweet spot:** Terminal workflow + modern UX + code preview
+**tui-fm's sweet spot:** Terminal workflow + modern UX + code preview
 
 ---
 
 ## Troubleshooting
 
-**"kiro command not found"**
+**"tui-fm command not found"**
 ```bash
 # Restart terminal or:
 source ~/.zshrc
@@ -209,9 +209,9 @@ source ~/.zshrc
 
 **"Want to start in a specific directory"**
 ```bash
-cd ~/target/path && kiro
+cd ~/target/path && tui-fm
 # Or just:
-(cd ~/target/path && kiro)
+(cd ~/target/path && tui-fm)
 ```
 
 **"Accidentally deleted something"**
@@ -222,9 +222,9 @@ Check your Trash folder to recover.
 
 ## Development Status
 
-**Current:** v0.1.0 - MVP with core features working  
-**Completion:** ~75% (Phases 1 & 2 done)  
-**Stability:** Stable for daily use  
+**Current:** v0.1.0 - MVP with core features working
+**Completion:** ~75% (Phases 1 & 2 done)
+**Stability:** Stable for daily use
 **Maintained:** Active personal project
 
 This is **not** a work-in-progress prototype. It's a working tool ready for real use.
@@ -235,7 +235,7 @@ This is **not** a work-in-progress prototype. It's a working tool ready for real
 
 ### Today
 1. Open a terminal
-2. Type `kiro`
+2. Type `tui-fm`
 3. Play around for 5 minutes
 4. Try copying a file (`c` key)
 
@@ -259,7 +259,7 @@ Not every tool needs to be perfect or replace everything. Sometimes a tool is us
 
 **Use the right tool for the job.**
 
-The goal isn't to force yourself to use kiro—it's to see if it **naturally** improves your workflow.
+The goal isn't to force yourself to use tui-fm—it's to see if it **naturally** improves your workflow.
 
 ---
 
@@ -270,4 +270,8 @@ After 1 week, be honest:
 - Or does it feel like homework?
 
 The answer determines if it's worth keeping. Simple as that.
+
+---
+
+**TUI File Manager** - Fast, beautiful, terminal-based file management.
 

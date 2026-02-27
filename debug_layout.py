@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Debug script to test layout rendering."""
 from textual.app import App, ComposeResult
-from textual.containers import Horizontal, Container
-from textual.widgets import Static, Label
+from textual.containers import Container, Horizontal
+from textual.widgets import Label, Static
+
 
 class DebugApp(App):
     CSS = """
@@ -27,13 +28,13 @@ class DebugApp(App):
         border: thick white;
     }
     """
-    
+
     def compose(self) -> ComposeResult:
         with Horizontal(id="main"):
             with Container(id="left"):
                 yield Label("LEFT PANE")
                 yield Static("This should be on the left side")
-            
+
             with Container(id="right"):
                 yield Label("RIGHT PANE")
                 yield Static("This should be on the right side")

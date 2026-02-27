@@ -1,25 +1,50 @@
+"""Filterable directory tree widget."""
 from pathlib import Path
+from typing import Iterable
+
 from textual.widgets import DirectoryTree
 
 
 class FilterableDirectoryTree(DirectoryTree):
     """DirectoryTree that filters visible paths by an active query."""
 
-    def __init__(self, path: str, **kwargs):
+    def __init__(self, path: str, **kwargs) -> None:
+        """Initialize the filterable directory tree.
+
+        Args:
+            path: Root path for the tree.
+            **kwargs: Additional arguments for DirectoryTree.
+        """
         super().__init__(path, **kwargs)
         self.filter_query = ""
 
     def set_filter_query(self, query: str) -> bool:
+        """Set the filter query.
+
+        Args:
+            query: Filter query string.
+
+        Returns:
+            True if the query changed, False otherwise.
+        """
         normalized = query.strip().lower()
         if normalized == self.filter_query:
             return False
         self.filter_query = normalized
         return True
 
-    def filter_paths(self, paths):
+    def filter_paths(self, paths: Iterable[Path]) -> list[Path]:
+        """Filter paths based on the active query.
+
+        Args:
+            paths: Iterable of paths to filter.
+
+        Returns:
+            Filtered list of paths.
+        """
         query = self.filter_query
         if not query:
-            return paths
+            return list(paths)
 
         filtered = []
         for path in paths:
@@ -34,8 +59,23 @@ class FilterableDirectoryTree(DirectoryTree):
                 continue
         return filtered
 
-    def _directory_has_match(self, directory: Path, query: str, max_entries: int = 500) -> bool:
-        stack = [directory]
+    def _directory_has_match(
+        self,
+        directory: Path,
+        query: str,
+        max_entries: int = 500,
+    ) -> bool:
+        """Check if a directory contains a matching entry.
+        
+        Args:
+            directory: Directory to search.
+            query: Filter query string.
+            max_entries: Maximum entries to scan before returning True.
+            
+        Returns:
+            True if a match is found or uncertain (due to max_entries).
+        """
+        stack: list[Path] = [directory]
         seen = 0
 
         while stack:
