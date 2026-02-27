@@ -7,6 +7,7 @@ from rich.text import Text
 from textual.widgets import DirectoryTree
 
 from git_service import GitService, GitStatus
+from icon_manager import IconManager
 
 
 class FilterableDirectoryTree(DirectoryTree):
@@ -22,6 +23,7 @@ class FilterableDirectoryTree(DirectoryTree):
         super().__init__(path, **kwargs)
         self.filter_query = ""
         self.git_service = GitService(Path(path))
+        self.icon_manager = IconManager()
         self._git_status_cache = {}
         self._cache_ttl = 5.0  # Cache for 5 seconds
 
@@ -147,13 +149,13 @@ class FilterableDirectoryTree(DirectoryTree):
             del self._git_status_cache[key]
 
     def _render_label_with_git_status(self, path: Path) -> Text:
-        """Render a label with Git status indicator.
+        """Render a label with icon and Git status indicator.
         
         Args:
             path: Path to render label for.
             
         Returns:
-            Text object with Git status indicator.
+            Text object with icon, Git status indicator, and filename.
         """
         # Get the relative path from the tree root
         try:
@@ -167,6 +169,17 @@ class FilterableDirectoryTree(DirectoryTree):
         
         # Create the label
         label = Text()
+        
+        # Add file/directory icon
+        if path.is_dir():
+            # Check if directory is a Git repository
+            is_git_repo = (path / ".git").exists() or git_status is not None
+            icon = self.icon_manager.get_directory_icon(path, is_git_repo)
+        else:
+            icon = self.icon_manager.get_file_icon(path)
+        
+        if icon:
+            label.append(f"{icon} ", style="default")
         
         # Add Git status indicator if available
         if git_status and git_status != GitStatus.CLEAN:

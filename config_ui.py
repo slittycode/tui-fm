@@ -7,6 +7,7 @@ from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Label, Static, Switch
 
 from config_manager import ConfigManager
+from theme_manager import ThemeManager
 
 
 class ConfigScreen(ModalScreen):
@@ -27,6 +28,7 @@ class ConfigScreen(ModalScreen):
         """
         super().__init__()
         self.config = config
+        self.theme_manager = ThemeManager()
         self._widgets = {}
 
     def compose(self) -> ComposeResult:
@@ -37,8 +39,7 @@ class ConfigScreen(ModalScreen):
             # Theme setting
             with Horizontal(id="theme-row"):
                 yield Label("Theme:")
-                yield Button("Light", id="theme-light", name="light")
-                yield Button("Dark", id="theme-dark", name="dark")
+                # Theme buttons will be added dynamically in on_mount
             
             # Preview size limit
             with Horizontal(id="preview-size-row"):
@@ -115,25 +116,52 @@ class ConfigScreen(ModalScreen):
 
     def on_mount(self) -> None:
         """Initialize UI state when mounted."""
+        self._create_theme_buttons()
         self._update_theme_buttons()
         self._focus_first_widget()
 
+    def _create_theme_buttons(self) -> None:
+        """Create theme buttons dynamically."""
+        theme_row = self.query_one("#theme-row", Horizontal)
+        
+        # Add theme buttons
+        for theme in self.theme_manager.list_themes():
+            button = Button(
+                theme.display_name,
+                id=f"theme-{theme.name}",
+                name=theme.name
+            )
+            theme_row.mount(button)
+    
     def _update_theme_buttons(self) -> None:
         """Update theme button states."""
         current_theme = self.config.theme
-        light_btn = self.query_one("#theme-light", Button)
-        dark_btn = self.query_one("#theme-dark", Button)
         
-        if current_theme == "light":
-            light_btn.variant = "primary"
-            dark_btn.variant = "default"
-        else:
-            light_btn.variant = "default"
-            dark_btn.variant = "primary"
+        for theme in self.theme_manager.list_themes():
+            try:
+                button = self.query_one(f"#theme-{theme.name}", Button)
+                if theme.name == current_theme:
+                    button.variant = "primary"
+                else:
+                    button.variant = "default"
+            except Exception:
+                # Button might not exist yet, skip
+                pass
 
     def _focus_first_widget(self) -> None:
         """Focus the first input widget."""
-        self.query_one("#theme-light", Button).focus()
+        themes = self.theme_manager.list_themes()
+        if themes:
+            first_theme = themes[0]
+            try:
+                button = self.query_one(f"#theme-{first_theme.name}", Button)
+                button.focus()
+            except Exception:
+                # Fallback to preview size input
+                try:
+                    self.query_one("#preview-size-input", Input).focus()
+                except Exception:
+                    pass
 
     def action_save_and_close(self) -> None:
         """Save configuration and close the screen."""
@@ -150,10 +178,10 @@ class ConfigScreen(ModalScreen):
     def _save_settings(self) -> None:
         """Save all settings from the UI to the config."""
         # Save theme
-        theme_buttons = self.query("Button[name]")
+        theme_buttons = self.query("Button[name^='theme-']")
         for btn in theme_buttons:
             if btn.variant == "primary":
-                self.config.set("theme", btn.name)
+                self.config.set("theme", btn.name.replace("theme-", ""))
                 break
 
         # Save preview size limit
@@ -205,20 +233,25 @@ class ConfigScreen(ModalScreen):
             self._reset_to_defaults()
         elif button_id == "cancel-button":
             self.action_dismiss()
-        elif button_id in ["theme-light", "theme-dark"]:
+        elif button_id.startswith("theme-"):
             self._select_theme_button(event.button.name)
 
     def _select_theme_button(self, theme: str) -> None:
         """Select a theme button."""
-        light_btn = self.query_one("#theme-light", Button)
-        dark_btn = self.query_one("#theme-dark", Button)
+        # Reset all theme buttons to default
+        for theme_obj in self.theme_manager.list_themes():
+            try:
+                button = self.query_one(f"#theme-{theme_obj.name}", Button)
+                button.variant = "default"
+            except Exception:
+                pass
         
-        if theme == "light":
-            light_btn.variant = "primary"
-            dark_btn.variant = "default"
-        else:
-            light_btn.variant = "default"
-            dark_btn.variant = "primary"
+        # Set selected theme button to primary
+        try:
+            selected_button = self.query_one(f"#theme-{theme}", Button)
+            selected_button.variant = "primary"
+        except Exception:
+            pass
 
     def _reset_to_defaults(self) -> None:
         """Reset all settings to defaults."""

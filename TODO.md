@@ -31,10 +31,10 @@
 ## 📋 Phase 3: Enhanced UX
 - [x] Search/filter functionality (MVP)
 - [x] Bookmarks/favorites
-- [ ] Multiple tabs
-- [ ] Color themes
-- [ ] File icons (using Nerd Fonts)
-- [ ] Mouse support
+- [x] Multiple tabs
+- [x] Color themes
+- [x] File icons (using Nerd Fonts)
+- [x] Mouse support
 
 ## 🎨 Phase 4: Advanced Features
 - [ ] Image preview (terminal graphics)

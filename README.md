@@ -18,9 +18,13 @@ A modern terminal-based file manager built with Python and Textual.
 - 🔖 Bookmarks for quick directory access
 - 📁 Git status indicators (M, A, D, ?)
 - ⚙️ Configuration UI with validation
-- 📊 Status bar with file info and last action
+- � Multiple tabs with keyboard navigation
+- �📊 Status bar with file info and last action
 - ⌨️ Keyboard-driven workflow
-- 🧪 Comprehensive test suite (70+ tests)
+- 🎨 8 built-in color themes with dynamic switching
+- 🖼️ File icons using Nerd Fonts (50+ file types)
+- 🖱️ Mouse support for intuitive navigation
+- 🧪 Comprehensive test suite (245+ tests)
 
 ## Installation
 

@@ -15,6 +15,9 @@ from config_manager import ConfigManager
 from config_ui import ConfigScreen
 from filesystem_service import FileSystemService
 from filterable_tree import FilterableDirectoryTree
+from image_preview_service import ImagePreviewService
+from tabbed_directory_tree import TabbedDirectoryTree
+from theme_manager import ThemeManager
 
 
 class FileManagerApp(App):
@@ -198,6 +201,17 @@ class FileManagerApp(App):
     .warning-text {
         color: $warning;
     }
+
+    .image-preview {
+        color: $text;
+        font-family: monospace;
+        line-height: 1;
+    }
+
+    .image-info {
+        color: $text-muted;
+        font-style: italic;
+    }
     """
 
     BINDINGS = [
@@ -217,12 +231,32 @@ class FileManagerApp(App):
         Binding("b", "bookmark_current", "Bookmark", key_display="b"),
         Binding("B", "browse_bookmarks", "Bookmarks", key_display="B"),
         Binding(",", "open_config", "Config", key_display=","),
+        Binding("ctrl+t", "new_tab", "New Tab", show=False),
+        Binding("ctrl+w", "close_tab", "Close Tab", show=False),
+        Binding("ctrl+tab", "next_tab", "Next Tab", show=False),
+        Binding("ctrl+shift+tab", "prev_tab", "Prev Tab", show=False),
+        Binding("ctrl+d", "duplicate_tab", "Duplicate Tab", show=False),
+        Binding("ctrl+l", "toggle_tab_lock", "Lock Tab", show=False),
+        Binding("1", "goto_tab_1", "Tab 1", show=False),
+        Binding("2", "goto_tab_2", "Tab 2", show=False),
+        Binding("3", "goto_tab_3", "Tab 3", show=False),
+        Binding("4", "goto_tab_4", "Tab 4", show=False),
+        Binding("5", "goto_tab_5", "Tab 5", show=False),
+        Binding("6", "goto_tab_6", "Tab 6", show=False),
+        Binding("7", "goto_tab_7", "Tab 7", show=False),
+        Binding("8", "goto_tab_8", "Tab 8", show=False),
+        Binding("9", "goto_tab_9", "Tab 9", show=False),
+        Binding("ctrl+right", "next_theme", "Next Theme", show=False),
+        Binding("ctrl+left", "prev_theme", "Prev Theme", show=False),
+        Binding("ctrl+i", "theme_info", "Theme Info", show=False),
     ]
 
     def __init__(self):
         super().__init__()
         self.config = ConfigManager()
         self.bookmarks = BookmarksManager()
+        self.theme_manager = ThemeManager()
+        self.image_preview_service = ImagePreviewService()
         self.current_path = self.config.default_path
         self.selected_file = None
         self.help_visible = False
@@ -258,9 +292,15 @@ class FileManagerApp(App):
 
     def on_mount(self) -> None:
         """Initialize responsive layout on first render."""
+        # Initialize theme system
+        self._initialize_theme()
+        
         self._apply_layout_mode(self.size.width)
         self._set_status(f"Ready | Root: {self.current_path}")
-        self.query_one("#tree", FilterableDirectoryTree).focus()
+        tabbed_tree = self.query_one("#tree", TabbedDirectoryTree)
+        active_tree = tabbed_tree.get_active_tree()
+        if active_tree:
+            active_tree.focus()
 
     def on_resize(self, event: Resize) -> None:
         """Re-evaluate layout when the terminal size changes."""
@@ -273,10 +313,7 @@ class FileManagerApp(App):
         with Horizontal(id="main-container"):
             # Left pane - Directory Tree
             with Vertical(id="left-pane"):
-                yield Static("📂 File Browser", id="tree-header")
-                with Container(id="tree-container"):
-                    yield FilterableDirectoryTree(str(self.current_path), id="tree")
-                yield Static(f"🏠 {self.current_path}", id="tree-footer")
+                yield TabbedDirectoryTree(self.current_path, id="tree")
 
             # Right pane - Preview
             with Vertical(id="right-pane"):
@@ -399,11 +436,17 @@ class FileManagerApp(App):
         input_widget = self.query_one("#command-input", Input)
         input_widget.value = ""
         input_widget.placeholder = "Command: / search | c copy | m move | n rename | d delete"
-        self.query_one("#tree", FilterableDirectoryTree).focus()
+        tabbed_tree = self.query_one("#tree", TabbedDirectoryTree)
+        active_tree = tabbed_tree.get_active_tree()
+        if active_tree:
+            active_tree.focus()
 
     def _refresh_after_operation(self) -> None:
         """Refresh tree after a state change without replacing result feedback."""
-        self.query_one(FilterableDirectoryTree).reload()
+        tabbed_tree = self.query_one("#tree", TabbedDirectoryTree)
+        active_tree = tabbed_tree.get_active_tree()
+        if active_tree:
+            active_tree.reload()
         if self.last_action:
             self._set_status(self.last_action)
         if self.selected_file and not self.selected_file.exists():
@@ -425,10 +468,14 @@ class FileManagerApp(App):
         """Apply or clear filter and refresh current preview."""
         self.filter_query = query.strip()
         self._clear_delete_confirmation()
-        tree = self.query_one("#tree", FilterableDirectoryTree)
-        changed = tree.set_filter_query(self.filter_query)
-        if changed:
-            tree.reload()
+        tabbed_tree = self.query_one("#tree", TabbedDirectoryTree)
+        active_tree = tabbed_tree.get_active_tree()
+        if active_tree:
+            changed = active_tree.set_filter_query(self.filter_query)
+            if changed:
+                active_tree.reload()
+            # Update tab state
+            tabbed_tree.update_active_tab_filter(self.filter_query)
 
         if self.selected_file and self.selected_file.exists():
             self.update_preview(self.selected_file)
@@ -676,6 +723,10 @@ class FileManagerApp(App):
         if size > 1_000_000:
             return {"kind": "large_file", "size": self._format_size(size)}
 
+        # Check if it's an image file first
+        if self.image_preview_service.can_render_image(file_path):
+            return {"kind": "image_file", "size": self._format_size(size)}
+        
         try:
             with open(file_path, encoding="utf-8") as handle:
                 raw_content = handle.read(10001)
@@ -784,6 +835,40 @@ class FileManagerApp(App):
             self._set_status(self._build_file_status(file_path, snapshot["size"]))
             return
 
+        if kind == "image_file":
+            # Render image preview
+            image_content = self.image_preview_service.render_image(file_path)
+            image_info = self.image_preview_service.get_image_info(file_path)
+            
+            header.update(f"🖼️ {file_path.name}")
+            
+            if image_content:
+                preview.update(
+                    Group(
+                        Text("═══ Image Preview ═══", style="bold cyan"),
+                        Text(""),
+                        Text.assemble(("Size: ", "dim"), snapshot["size"]),
+                        Text.assemble(("Path: ", "dim"), (str(file_path), "italic")),
+                        Text.assemble(("Format: ", "dim"), (image_info.get("format", "unknown") if image_info else "unknown")),
+                        Text.assemble(("Dimensions: ", "dim"), (f"{image_info.get('width', '?')}x{image_info.get('height', '?')}" if image_info else "unknown")),
+                        Text(""),
+                        Text(image_content, style="default"),
+                    )
+                )
+            else:
+                preview.update(
+                    f"[yellow bold]🖼️  Image file[/yellow bold]\n\n"
+                    f"[dim]Size:[/dim] {snapshot['size']}\n"
+                    f"[dim]Path:[/dim] [italic]{file_path}[/italic]\n"
+                    f"[dim]Format:[/dim] {image_info.get('format', 'unknown') if image_info else 'unknown'}\n\n"
+                    f"[dim]Unable to render image (PIL not available or unsupported format).[/dim]"
+                )
+            
+            footer.update(f"🖼️ {snapshot['size']}")
+            tree_footer.update(f"📂 {file_path.parent}")
+            self._set_status(self._build_file_status(file_path, snapshot["size"]))
+            return
+
         if kind == "binary_file":
             header.update(f"📄 {file_path.name}")
             preview.update(
@@ -834,12 +919,18 @@ class FileManagerApp(App):
     def action_refresh(self) -> None:
         """Refresh the directory tree."""
         self._clear_delete_confirmation()
-        tree = self.query_one(FilterableDirectoryTree)
-        tree.reload()
+        tabbed_tree = self.query_one("#tree", TabbedDirectoryTree)
+        active_tree = tabbed_tree.get_active_tree()
+        if active_tree:
+            active_tree.reload()
+            current_path = tabbed_tree.get_active_path()
+        else:
+            current_path = self.current_path
+        
         if self.selected_file and self.selected_file.exists():
             self.update_preview(self.selected_file)
         else:
-            self._set_status(f"Refreshed | Root: {self.current_path}")
+            self._set_status(f"Refreshed | Root: {current_path}")
 
     def action_start_search(self) -> None:
         """Start search/filter input mode."""
@@ -985,7 +1076,22 @@ class FileManagerApp(App):
 [bold yellow]⚙️ Configuration[/bold yellow]
   [green],[/green]             Open configuration screen
 
-[bold yellow]📁 Git Status[/bold yellow]
+[bold yellow]� Tabs[/bold yellow]
+  [green]Ctrl+T[/green]        New tab
+  [green]Ctrl+W[/green]        Close tab
+  [green]Ctrl+Tab[/green]      Next tab
+  [green]Ctrl+Shift+Tab[/green] Previous tab
+  [green]Ctrl+D[/green]        Duplicate tab
+  [green]Ctrl+L[/green]        Lock/unlock tab
+  [green]1-9[/green]           Jump to tab
+
+[bold yellow]🎨 Themes[/bold yellow]
+  [green]Ctrl+→[/green]         Next theme
+  [green]Ctrl+←[/green]         Previous theme
+  [green]Ctrl+I[/green]         Theme info
+  [green],[/green]             Theme settings (in config)
+
+[bold yellow]�📁 Git Status[/bold yellow]
   [yellow]M[/yellow]             Modified file
   [green]A[/green]              Staged file
   [red]D[/red]                Deleted file
@@ -999,8 +1105,10 @@ class FileManagerApp(App):
     def action_bookmark_current(self) -> None:
         """Bookmark the current directory."""
         try:
-            self.bookmarks.add(self.current_path)
-            self._set_status(f"Bookmarked: {self.current_path}")
+            tabbed_tree = self.query_one("#tree", TabbedDirectoryTree)
+            current_path = tabbed_tree.get_active_path()
+            self.bookmarks.add(current_path)
+            self._set_status(f"Bookmarked: {current_path}")
         except ValueError as e:
             self._set_status(f"Bookmark error: {e}")
 
@@ -1061,12 +1169,210 @@ class FileManagerApp(App):
 
         header.update("👁️  Preview")
         footer.update("Ready")
-        tree_footer.update(f"🏠 {self.current_path}")
+        tabbed_tree = self.query_one("#tree", TabbedDirectoryTree)
+        current_path = tabbed_tree.get_active_path()
+        tree_footer.update(f"🏠 {current_path}")
         preview.update(self._get_welcome_text())
         self.selected_file = None
-        ready = f"Ready | Root: {self.current_path}"
+        ready = f"Ready | Root: {current_path}"
         if self.filter_query:
             ready += f" | Filter: {self.filter_query}"
         if self.last_action:
             ready += f" | Last: {self.last_action}"
         self._set_status(ready)
+
+    def action_new_tab(self) -> None:
+        """Create a new tab."""
+        self._clear_delete_confirmation()
+        tabbed_tree = self.query_one("#tree", TabbedDirectoryTree)
+        
+        if tabbed_tree.is_at_max_tabs():
+            self._set_status("Maximum number of tabs reached")
+            return
+        
+        tabbed_tree.add_tab()
+        self._set_status("New tab created")
+
+    def action_close_tab(self) -> None:
+        """Close the current tab."""
+        self._clear_delete_confirmation()
+        tabbed_tree = self.query_one("#tree", TabbedDirectoryTree)
+        
+        if tabbed_tree.get_tab_count() <= 1:
+            self._set_status("Cannot close the last tab")
+            return
+        
+        success = tabbed_tree.close_tab()
+        if success:
+            self._set_status("Tab closed")
+        else:
+            self._set_status("Failed to close tab")
+
+    def action_next_tab(self) -> None:
+        """Switch to the next tab."""
+        self._clear_delete_confirmation()
+        tabbed_tree = self.query_one("#tree", TabbedDirectoryTree)
+        
+        if tabbed_tree.next_tab():
+            self._set_status("Next tab")
+        else:
+            self._set_status("No other tabs")
+
+    def action_prev_tab(self) -> None:
+        """Switch to the previous tab."""
+        self._clear_delete_confirmation()
+        tabbed_tree = self.query_one("#tree", TabbedDirectoryTree)
+        
+        if tabbed_tree.previous_tab():
+            self._set_status("Previous tab")
+        else:
+            self._set_status("No other tabs")
+
+    def action_duplicate_tab(self) -> None:
+        """Duplicate the current tab."""
+        self._clear_delete_confirmation()
+        tabbed_tree = self.query_one("#tree", TabbedDirectoryTree)
+        
+        if tabbed_tree.duplicate_active_tab():
+            self._set_status("Tab duplicated")
+        else:
+            self._set_status("Failed to duplicate tab")
+
+    def action_toggle_tab_lock(self) -> None:
+        """Toggle the lock state of the current tab."""
+        self._clear_delete_confirmation()
+        tabbed_tree = self.query_one("#tree", TabbedDirectoryTree)
+        tabbed_tree.toggle_active_tab_lock()
+        
+        active_tab = tabbed_tree.tab_manager.active_tab
+        if active_tab.is_locked:
+            self._set_status("Tab locked")
+        else:
+            self._set_status("Tab unlocked")
+
+    def action_goto_tab_1(self) -> None:
+        """Switch to tab 1."""
+        self._goto_tab_number(0)
+
+    def action_goto_tab_2(self) -> None:
+        """Switch to tab 2."""
+        self._goto_tab_number(1)
+
+    def action_goto_tab_3(self) -> None:
+        """Switch to tab 3."""
+        self._goto_tab_number(2)
+
+    def action_goto_tab_4(self) -> None:
+        """Switch to tab 4."""
+        self._goto_tab_number(3)
+
+    def action_goto_tab_5(self) -> None:
+        """Switch to tab 5."""
+        self._goto_tab_number(4)
+
+    def action_goto_tab_6(self) -> None:
+        """Switch to tab 6."""
+        self._goto_tab_number(5)
+
+    def action_goto_tab_7(self) -> None:
+        """Switch to tab 7."""
+        self._goto_tab_number(6)
+
+    def action_goto_tab_8(self) -> None:
+        """Switch to tab 8."""
+        self._goto_tab_number(7)
+
+    def action_goto_tab_9(self) -> None:
+        """Switch to tab 9."""
+        self._goto_tab_number(8)
+
+    def _goto_tab_number(self, index: int) -> None:
+        """Switch to tab by number.
+        
+        Args:
+            index: Zero-based tab index.
+        """
+        self._clear_delete_confirmation()
+        tabbed_tree = self.query_one("#tree", TabbedDirectoryTree)
+        
+        if tabbed_tree.switch_to_tab(index):
+            self._set_status(f"Switched to tab {index + 1}")
+        else:
+            self._set_status(f"Tab {index + 1} not found")
+
+    def _initialize_theme(self) -> None:
+        """Initialize the theme system and apply the current theme."""
+        # Set theme from configuration
+        theme_name = self.config.theme
+        if self.theme_manager.set_theme(theme_name):
+            self._apply_theme_css()
+        else:
+            # Fallback to dark theme if configured theme not found
+            self.theme_manager.set_theme("dark")
+            self.config.set("theme", "dark")
+            self._apply_theme_css()
+
+    def _apply_theme_css(self) -> None:
+        """Apply CSS for the current theme."""
+        current_theme = self.theme_manager.get_current_theme()
+        if current_theme:
+            css = self.theme_manager.generate_css(current_theme)
+            self.styles.css = css
+
+    def action_next_theme(self) -> None:
+        """Switch to the next theme."""
+        self._clear_delete_confirmation()
+        themes = self.theme_manager.list_themes()
+        if len(themes) <= 1:
+            self._set_status("No other themes available")
+            return
+        
+        current_index = -1
+        for i, theme in enumerate(themes):
+            if theme.name == self.theme_manager.current_theme:
+                current_index = i
+                break
+        
+        next_index = (current_index + 1) % len(themes)
+        next_theme = themes[next_index]
+        
+        if self.theme_manager.set_theme(next_theme.name):
+            self.config.set("theme", next_theme.name)
+            self._apply_theme_css()
+            self._set_status(f"Theme: {next_theme.display_name}")
+
+    def action_prev_theme(self) -> None:
+        """Switch to the previous theme."""
+        self._clear_delete_confirmation()
+        themes = self.theme_manager.list_themes()
+        if len(themes) <= 1:
+            self._set_status("No other themes available")
+            return
+        
+        current_index = -1
+        for i, theme in enumerate(themes):
+            if theme.name == self.theme_manager.current_theme:
+                current_index = i
+                break
+        
+        prev_index = (current_index - 1) % len(themes)
+        prev_theme = themes[prev_index]
+        
+        if self.theme_manager.set_theme(prev_theme.name):
+            self.config.set("theme", prev_theme.name)
+            self._apply_theme_css()
+            self._set_status(f"Theme: {prev_theme.display_name}")
+
+    def action_theme_info(self) -> None:
+        """Show information about the current theme."""
+        self._clear_delete_confirmation()
+        current_theme = self.theme_manager.get_current_theme()
+        if not current_theme:
+            self._set_status("No theme selected")
+            return
+        
+        theme_info = (
+            f"Theme: {current_theme.display_name} "
+            f"({current_theme.name}) - {current_theme.description}"
+        )
+        self._set_status(theme_info)
