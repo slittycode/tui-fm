@@ -10,11 +10,14 @@ from textual.containers import Container, Horizontal, Vertical
 from textual.events import Resize
 from textual.widgets import Footer, Header, Input, Static
 
+from archive_service import ArchiveService
 from bookmarks_manager import BookmarksManager
 from config_manager import ConfigManager
 from config_ui import ConfigScreen
+from disk_usage_service import DiskUsageService
 from filesystem_service import FileSystemService
 from filterable_tree import FilterableDirectoryTree
+from git_enhanced import EnhancedGitService
 from image_preview_service import ImagePreviewService
 from tabbed_directory_tree import TabbedDirectoryTree
 from theme_manager import ThemeManager
@@ -249,6 +252,10 @@ class FileManagerApp(App):
         Binding("ctrl+right", "next_theme", "Next Theme", show=False),
         Binding("ctrl+left", "prev_theme", "Prev Theme", show=False),
         Binding("ctrl+i", "theme_info", "Theme Info", show=False),
+        Binding("ctrl+u", "disk_usage", "Disk Usage", show=False),
+        Binding("ctrl+g", "git_log", "Git Log", show=False),
+        Binding("ctrl+b", "git_branches", "Git Branches", show=False),
+        Binding("ctrl+s", "git_status", "Git Status", show=False),
     ]
 
     def __init__(self):
@@ -257,6 +264,9 @@ class FileManagerApp(App):
         self.bookmarks = BookmarksManager()
         self.theme_manager = ThemeManager()
         self.image_preview_service = ImagePreviewService()
+        self.disk_usage_service = DiskUsageService()
+        self.archive_service = ArchiveService()
+        self.enhanced_git_service = EnhancedGitService(self.config.default_path)
         self.current_path = self.config.default_path
         self.selected_file = None
         self.help_visible = False
@@ -723,7 +733,11 @@ class FileManagerApp(App):
         if size > 1_000_000:
             return {"kind": "large_file", "size": self._format_size(size)}
 
-        # Check if it's an image file first
+        # Check if it's an archive file first
+        if self.archive_service.is_archive(file_path):
+            return {"kind": "archive_file", "size": self._format_size(size)}
+        
+        # Check if it's an image file
         if self.image_preview_service.can_render_image(file_path):
             return {"kind": "image_file", "size": self._format_size(size)}
         
@@ -833,6 +847,74 @@ class FileManagerApp(App):
             footer.update(f"📄 {snapshot['size']}")
             tree_footer.update(f"📂 {file_path.parent}")
             self._set_status(self._build_file_status(file_path, snapshot["size"]))
+            return
+
+        if kind == "archive_file":
+            # Render archive preview
+            try:
+                archive_info = self.archive_service.list_archive_contents(file_path)
+                archive_stats = self.archive_service.get_archive_stats(file_path)
+                
+                header.update(f"📦 {file_path.name}")
+                
+                content = []
+                content.append("═══ Archive Contents ═══")
+                content.append("")
+                content.append(f"📦 Type: {archive_stats.get('type', 'unknown')}")
+                content.append(f"📊 Size: {snapshot['size']}")
+                content.append(f"📁 Entries: {archive_stats.get('total_entries', 0)}")
+                content.append(f"📄 Files: {archive_stats.get('file_count', 0)}")
+                content.append(f"📂 Directories: {archive_stats.get('dir_count', 0)}")
+                
+                if archive_stats.get('compression_ratio'):
+                    ratio = archive_stats['compression_ratio']
+                    reduction = archive_stats.get('size_reduction', 0)
+                    content.append(f"🗜️  Compression: {ratio:.2f}x ({reduction:.1f}% smaller)")
+                
+                content.append("")
+                
+                # Show first few entries
+                if archive_info.entries:
+                    content.append("📋 Contents (first 20):")
+                    file_entries = [e for e in archive_info.entries if e.is_file][:15]
+                    dir_entries = [e for e in archive_info.entries if e.is_dir][:5]
+                    
+                    if dir_entries:
+                        content.append("")
+                        content.append("📂 Directories:")
+                        for entry in dir_entries:
+                            size_str = self._format_size(entry.size) if entry.size > 0 else "—"
+                            content.append(f"  📁 {entry.name} ({size_str})")
+                    
+                    if file_entries:
+                        content.append("")
+                        content.append("📄 Files:")
+                        for entry in file_entries:
+                            size_str = self._format_size(entry.size)
+                            content.append(f"  📄 {entry.name} ({size_str})")
+                    
+                    if archive_info.total_entries > 20:
+                        content.append("")
+                        content.append(f"[dim]... and {archive_info.total_entries - 20} more entries[/dim]")
+                else:
+                    content.append("[dim italic]Archive appears to be empty[/dim italic]")
+                
+                preview.update("\n".join(content))
+                footer.update(f"📦 {archive_stats.get('total_entries', 0)} entries")
+                tree_footer.update(f"📂 {file_path.parent}")
+                self._set_status(f"Archive: {file_path.name} ({archive_stats.get('total_entries', 0)} entries)")
+                
+            except Exception as e:
+                header.update(f"📦 {file_path.name}")
+                preview.update(
+                    f"[yellow bold]📦 Archive file[/yellow bold]\n\n"
+                    f"[dim]Size:[/dim] {snapshot['size']}\n"
+                    f"[dim]Path:[/dim] [italic]{file_path}[/italic]\n\n"
+                    f"[red]Error reading archive:[/red] {str(e)}"
+                )
+                footer.update(f"📦 {snapshot['size']}")
+                tree_footer.update(f"📂 {file_path.parent}")
+                self._set_status(f"Archive error: {file_path.name}")
             return
 
         if kind == "image_file":
@@ -1376,3 +1458,285 @@ class FileManagerApp(App):
             f"({current_theme.name}) - {current_theme.description}"
         )
         self._set_status(theme_info)
+
+    def action_disk_usage(self) -> None:
+        """Show disk usage analysis for current directory."""
+        self._clear_delete_confirmation()
+        self.help_visible = False
+        
+        try:
+            tabbed_tree = self.query_one("#tree", TabbedDirectoryTree)
+            current_path = Path(tabbed_tree.current_path)
+        except (AttributeError, ValueError):
+            current_path = self.current_path
+        
+        if not current_path.exists():
+            self._set_status("Path does not exist")
+            return
+        
+        # Get disk usage analysis
+        summary = self.disk_usage_service.analyze_directory(current_path, max_depth=2)
+        
+        # Format disk usage information
+        total_size = self.disk_usage_service.format_size(summary.total_size)
+        file_count = summary.total_files
+        dir_count = summary.total_dirs
+        
+        # Get disk space information
+        total_disk, used_disk, free_disk = self.disk_usage_service.get_disk_usage(current_path)
+        used_pct, free_pct = self.disk_usage_service.get_disk_space_percentage(current_path)
+        
+        # Build disk usage report
+        content = []
+        content.append("═══ Disk Usage Analysis ═══")
+        content.append("")
+        content.append(f"📁 Directory: {current_path}")
+        content.append(f"📊 Total Size: {total_size}")
+        content.append(f"📄 Files: {file_count}")
+        content.append(f"📂 Directories: {dir_count}")
+        content.append("")
+        
+        # Disk space information
+        content.append("💾 Disk Space:")
+        content.append(f"   Total: {self.disk_usage_service.format_size(total_disk)}")
+        content.append(f"   Used: {self.disk_usage_service.format_size(used_disk)} ({used_pct:.1f}%)")
+        content.append(f"   Free: {self.disk_usage_service.format_size(free_disk)} ({free_pct:.1f}%)")
+        content.append("")
+        
+        # Largest files
+        if summary.largest_files:
+            content.append("🔝 Largest Files:")
+            for file_path, size in summary.largest_files[:5]:
+                size_str = self.disk_usage_service.format_size(size)
+                relative_path = file_path.relative_to(current_path)
+                content.append(f"   {size_str:8} {relative_path}")
+            content.append("")
+        
+        # File type distribution
+        if summary.file_type_distribution:
+            content.append("📋 File Types:")
+            # Sort by size
+            sorted_types = sorted(summary.file_type_distribution.items(), key=lambda x: x[1], reverse=True)
+            for file_type, size in sorted_types[:8]:
+                size_str = self.disk_usage_service.format_size(size)
+                percentage = (size / summary.total_size) * 100 if summary.total_size > 0 else 0
+                content.append(f"   {size_str:8} {file_type or 'no_ext'} ({percentage:.1f}%)")
+            content.append("")
+        
+        # Subdirectory sizes
+        if summary.subdirectory_sizes:
+            content.append("📂 Subdirectories:")
+            sorted_dirs = sorted(summary.subdirectory_sizes.items(), key=lambda x: x[1], reverse=True)
+            for dir_name, size in sorted_dirs[:5]:
+                size_str = self.disk_usage_service.format_size(size)
+                content.append(f"   {size_str:8} {dir_name}/")
+        
+        # Display in preview pane
+        preview = self.query_one("#preview-content", Static)
+        preview.update("\n".join(content))
+        
+        self._set_status(f"Disk usage analysis for {current_path.name}")
+
+    def action_git_log(self) -> None:
+        """Show Git commit history."""
+        self._clear_delete_confirmation()
+        self.help_visible = False
+        
+        try:
+            tabbed_tree = self.query_one("#tree", TabbedDirectoryTree)
+            current_path = Path(tabbed_tree.current_path)
+        except (AttributeError, ValueError):
+            current_path = self.current_path
+        
+        # Update Git service path
+        self.enhanced_git_service = EnhancedGitService(current_path)
+        
+        if not self.enhanced_git_service.is_git_repository():
+            self._set_status("Not a Git repository")
+            return
+        
+        # Get commit history
+        commits = self.enhanced_git_service.get_commit_history(limit=15)
+        
+        content = []
+        content.append("═══ Git Commit History ═══")
+        content.append("")
+        
+        if not commits:
+            content.append("[dim italic]No commits found[/dim italic]")
+        else:
+            for commit in commits:
+                date_str = commit.date.strftime("%Y-%m-%d %H:%M")
+                content.append(f"[bold]{commit.short_hash}[/bold] [cyan]{commit.author}[/cyan] [dim]{date_str}[/dim]")
+                content.append(f"  {commit.message}")
+                
+                if commit.files_changed > 0:
+                    stats = f"[dim]({commit.files_changed} files, {commit.insertions}+, {commit.deletions}-)[/dim]"
+                    content.append(f"  {stats}")
+                content.append("")
+        
+        preview = self.query_one("#preview-content", Static)
+        preview.update("\n".join(content))
+        
+        self._set_status(f"Git log: {len(commits)} commits")
+
+    def action_git_branches(self) -> None:
+        """Show Git branches."""
+        self._clear_delete_confirmation()
+        self.help_visible = False
+        
+        try:
+            tabbed_tree = self.query_one("#tree", TabbedDirectoryTree)
+            current_path = Path(tabbed_tree.current_path)
+        except (AttributeError, ValueError):
+            current_path = self.current_path
+        
+        # Update Git service path
+        self.enhanced_git_service = EnhancedGitService(current_path)
+        
+        if not self.enhanced_git_service.is_git_repository():
+            self._set_status("Not a Git repository")
+            return
+        
+        # Get branches
+        branches = self.enhanced_git_service.get_branches(include_remote=True)
+        
+        content = []
+        content.append("═══ Git Branches ═══")
+        content.append("")
+        
+        if not branches:
+            content.append("[dim italic]No branches found[/dim italic]")
+        else:
+            current_branch = self.enhanced_git_service.get_current_branch()
+            
+            # Local branches
+            local_branches = [b for b in branches if not b.is_remote]
+            if local_branches:
+                content.append("📁 Local Branches:")
+                for branch in local_branches:
+                    status = ""
+                    if branch.is_current:
+                        status = " [green]✓ CURRENT[/green]"
+                    elif branch.ahead and branch.ahead > 0:
+                        status = f" [cyan]↑{branch.ahead}[/cyan]"
+                    elif branch.behind and branch.behind > 0:
+                        status = f" [yellow]↓{branch.behind}[/yellow]"
+                    
+                    commit = branch.last_commit[:8] if branch.last_commit else ""
+                    content.append(f"  {branch.name} {status} [dim]{commit}[/dim]")
+                content.append("")
+            
+            # Remote branches
+            remote_branches = [b for b in branches if b.is_remote]
+            if remote_branches:
+                content.append("🌐 Remote Branches:")
+                for branch in remote_branches[:10]:  # Limit to 10 remotes
+                    commit = branch.last_commit[:8] if branch.last_commit else ""
+                    content.append(f"  {branch.name} [dim]{commit}[/dim]")
+                
+                if len(remote_branches) > 10:
+                    content.append(f"  [dim]... and {len(remote_branches) - 10} more[/dim]")
+        
+        preview = self.query_one("#preview-content", Static)
+        preview.update("\n".join(content))
+        
+        self._set_status(f"Git branches: {len(branches)} total")
+
+    def action_git_status(self) -> None:
+        """Show Git repository status."""
+        self._clear_delete_confirmation()
+        self.help_visible = False
+        
+        try:
+            tabbed_tree = self.query_one("#tree", TabbedDirectoryTree)
+            current_path = Path(tabbed_tree.current_path)
+        except (AttributeError, ValueError):
+            current_path = self.current_path
+        
+        # Update Git service path
+        self.enhanced_git_service = EnhancedGitService(current_path)
+        
+        if not self.enhanced_git_service.is_git_repository():
+            self._set_status("Not a Git repository")
+            return
+        
+        # Get repository status
+        status = self.enhanced_git_service.get_repo_status()
+        
+        content = []
+        content.append("═══ Git Repository Status ═══")
+        content.append("")
+        
+        # Branch info
+        branch_info = f"[bold]🌿 {status.branch}[/bold]"
+        if status.ahead_by or status.behind_by:
+            sync_info = []
+            if status.ahead_by:
+                sync_info.append(f"[cyan]↑{status.ahead_by}[/cyan]")
+            if status.behind_by:
+                sync_info.append(f"[yellow]↓{status.behind_by}[/yellow]")
+            branch_info += f" {' '.join(sync_info)}"
+        
+        content.append(branch_info)
+        
+        # Working tree status
+        if status.is_clean:
+            content.append("[green]✓ Working tree clean[/green]")
+        else:
+            parts = []
+            if status.staged_files:
+                parts.append(f"[yellow]{len(status.staged_files)} staged[/yellow]")
+            if status.modified_files:
+                parts.append(f"[cyan]{len(status.modified_files)} modified[/cyan]")
+            if status.untracked_files:
+                parts.append(f"[blue]{len(status.untracked_files)} untracked[/blue]")
+            if status.deleted_files:
+                parts.append(f"[red]{len(status.deleted_files)} deleted[/red]")
+            
+            content.append(f"[yellow]⚠ {' | '.join(parts)}[/yellow]")
+        
+        # Stash info
+        if status.stashes > 0:
+            content.append(f"[blue]📦 {status.stashes} stashes[/blue]")
+        
+        content.append("")
+        
+        # Show files by category
+        if status.staged_files:
+            content.append("[yellow]📋 Staged files:[/yellow]")
+            for file in status.staged_files[:10]:
+                content.append(f"  [green]A[/green] {file}")
+            if len(status.staged_files) > 10:
+                content.append(f"  [dim]... and {len(status.staged_files) - 10} more[/dim]")
+            content.append("")
+        
+        if status.modified_files:
+            content.append("[cyan]📝 Modified files:[/cyan]")
+            for file in status.modified_files[:10]:
+                content.append(f"  [yellow]M[/yellow] {file}")
+            if len(status.modified_files) > 10:
+                content.append(f"  [dim]... and {len(status.modified_files) - 10} more[/dim]")
+            content.append("")
+        
+        if status.untracked_files:
+            content.append("[blue]❓ Untracked files:[/blue]")
+            for file in status.untracked_files[:10]:
+                content.append(f"  [blue]?[/blue] {file}")
+            if len(status.untracked_files) > 10:
+                content.append(f"  [dim]... and {len(status.untracked_files) - 10} more[/dim]")
+            content.append("")
+        
+        if status.deleted_files:
+            content.append("[red]🗑️  Deleted files:[/red]")
+            for file in status.deleted_files[:10]:
+                content.append(f"  [red]D[/red] {file}")
+            if len(status.deleted_files) > 10:
+                content.append(f"  [dim]... and {len(status.deleted_files) - 10} more[/dim]")
+        
+        preview = self.query_one("#preview-content", Static)
+        preview.update("\n".join(content))
+        
+        total_changes = (len(status.staged_files) + len(status.modified_files) + 
+                        len(status.untracked_files) + len(status.deleted_files))
+        self._set_status(f"Git status: {status.branch} ({total_changes} changes)")

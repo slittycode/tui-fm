@@ -38,9 +38,9 @@
 
 ## 🎨 Phase 4: Advanced Features
 - [x] Image preview (terminal graphics)
-- [ ] Git status indicators (deep integration)
-- [ ] Archive browsing (zip/tar)
-- [ ] Disk usage visualization
+- [x] Git status indicators (deep integration)
+- [x] Archive browsing (zip/tar)
+- [x] Disk usage visualization
 - [ ] Plugin system
 - [x] Fuzzy search (fzf-style)
 
