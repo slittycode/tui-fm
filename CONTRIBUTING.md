@@ -3,7 +3,7 @@
 ## Setup
 - Create a virtual environment: `python3 -m venv venv`
 - Activate it: `source venv/bin/activate`
-- Install dependencies (canonical): `pip install -e .[dev]`
+- Install dependencies (canonical): `pip install -e '.[dev]'`
 - Optional pinned workflow: `pip install -r requirements.txt`
 
 ## Run

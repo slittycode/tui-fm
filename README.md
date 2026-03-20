@@ -44,7 +44,7 @@ python3 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # Install package + development dependencies from pyproject.toml
-pip install -e .[dev]
+pip install -e '.[dev]'
 
 # Optional: install from requirements.txt for local pinned workflows
 pip install -r requirements.txt
@@ -152,7 +152,7 @@ open htmlcov/index.html
 
 ```bash
 # Install development dependencies (canonical source: pyproject.toml)
-pip install -e .[dev]
+pip install -e '.[dev]'
 
 # Install pre-commit hooks
 pre-commit install
