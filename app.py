@@ -219,6 +219,7 @@ class FileManagerApp(App):
         Binding("q", "quit", "Quit", key_display="q"),
         Binding("r", "refresh", "Refresh", key_display="r"),
         Binding("h", "toggle_help", "Help", key_display="h"),
+        Binding("g", "goto_path", "Go To Path", key_display="g"),
         Binding("c", "copy_selected", "Copy", key_display="c"),
         Binding("m", "move_selected", "Move", key_display="m"),
         Binding("n", "rename_selected", "Rename", key_display="n"),
@@ -334,7 +335,7 @@ class FileManagerApp(App):
                     yield Static("Ready", id="preview-footer")
         yield Static("Ready", id="status-bar")
         yield Input(
-            placeholder="Command: / search | c copy | m move | n rename | d delete",
+            placeholder="Command: / search | g goto | c copy | m move | n rename | d delete",
             id="command-input",
         )
         yield Footer()
@@ -443,11 +444,19 @@ class FileManagerApp(App):
         self.command_mode = None
         input_widget = self.query_one("#command-input", Input)
         input_widget.value = ""
-        input_widget.placeholder = "Command: / search | c copy | m move | n rename | d delete"
+        input_widget.placeholder = "Command: / search | g goto | c copy | m move | n rename | d delete"
         tabbed_tree = self.query_one("#tree", TabbedDirectoryTree)
         active_tree = tabbed_tree.get_active_tree()
         if active_tree:
             active_tree.focus()
+
+    @staticmethod
+    def _resolve_directory_input(raw_value: str, base_path: Path) -> Path:
+        """Resolve user-provided folder input into an absolute path."""
+        target = Path(raw_value).expanduser()
+        if target.is_absolute():
+            return target.resolve()
+        return (base_path / target).resolve()
 
     def _refresh_after_operation(self) -> None:
         """Refresh tree after a state change without replacing result feedback."""
@@ -505,9 +514,35 @@ class FileManagerApp(App):
             self._apply_filter_query(value)
             return
 
+        if mode == "goto":
+            try:
+                if not value:
+                    raise ValueError("Folder path is required.")
+
+                tabbed_tree = self.query_one("#tree", TabbedDirectoryTree)
+                base_path = tabbed_tree.get_active_path()
+                destination = self._resolve_directory_input(value, base_path)
+
+                if not destination.exists():
+                    raise ValueError(f"Path not found: {destination}")
+                if not destination.is_dir():
+                    raise ValueError(f"Not a directory: {destination}")
+
+                tabbed_tree.update_active_tab_path(destination)
+                active_tree = tabbed_tree.get_active_tree()
+                if active_tree:
+                    active_tree.reload()
+                self.current_path = destination
+                self.last_action = f"Root set to {destination}"
+                self.action_clear_selection()
+                self._set_status(f"Root changed to: {destination}")
+            except Exception as error:
+                self._set_status(f"Go to path failed: {error}")
+            return
+
         if mode is None:
             if value:
-                self._set_status("No pending command. Use /, c, m, n, or d.")
+                self._set_status("No pending command. Use /, g, c, m, n, or d.")
             return
 
         source = self._get_selected_path()
@@ -1020,6 +1055,16 @@ class FileManagerApp(App):
             self.filter_query,
         )
 
+    def action_goto_path(self) -> None:
+        """Prompt for a folder path and switch the active tab to it."""
+        tabbed_tree = self.query_one("#tree", TabbedDirectoryTree)
+        current_path = tabbed_tree.get_active_path()
+        self._enter_command_mode(
+            "goto",
+            "Go to folder (absolute, relative, or ~/path):",
+            str(current_path),
+        )
+
     def action_clear_filter(self) -> None:
         """Clear active filter query."""
         self._clear_delete_confirmation()
@@ -1114,6 +1159,7 @@ class FileManagerApp(App):
   [green]q[/green]             Quit application
   [green]r[/green]             Refresh directory tree
   [green]/[/green]             Start search/filter
+  [green]g[/green]             Go to folder path
   [green]f[/green]             Clear active filter
   [green]c[/green]             Copy selected file/folder
   [green]m[/green]             Move selected file/folder

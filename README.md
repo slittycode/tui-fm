@@ -99,6 +99,7 @@ tui-fm
 | Key | Action |
 |-----|--------|
 | `/` | Start search/filter |
+| `g` | Go to folder path (absolute/relative/~/path) |
 | `f` | Clear active filter |
 | `b` | Bookmark current directory |
 | `B` | Browse bookmarks |
