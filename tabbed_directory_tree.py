@@ -51,29 +51,44 @@ class TabbedDirectoryTree(Vertical):
         content_widget = self.query_one("#directory-content", TabbedContent)
         
         # Clear existing tabs and content
-        tabs_widget.clear()
-        content_widget.clear()
+        tabs_widget.clear().call_next(self)
+        content_widget.clear_panes().call_next(self)
+        self._tree_widgets = {}
         
         # Recreate tabs and their panes
-        for _i, tab_state in enumerate(self.tab_manager):
+        for tab_state in self.tab_manager:
             # Create tab
             tab_title = tab_state.display_title
             if tab_state.is_locked:
                 tab_title = f"🔒 {tab_title}"
             
             tab = Tab(tab_title, id=f"tab-{tab_state.id}")
-            tabs_widget.add_pane(tab)
+            tabs_widget.add_tab(tab).call_next(self)
             
             # Create tab pane with directory tree
-            with TabPane(tab_state.id, id=f"pane-{tab_state.id}"):
-                tree = FilterableDirectoryTree(str(tab_state.path), id=f"tree-{tab_state.id}")
-                self._tree_widgets[tab_state.id] = tree
-                yield tree
-        
-        # Set active tab
-        if self.tab_manager.tabs:
-            active_tab_id = self.tab_manager.active_tab.id
-            tabs_widget.active = f"tab-{active_tab_id}"
+            tree = FilterableDirectoryTree(str(tab_state.path), id=f"tree-{tab_state.id}")
+            if tab_state.filter_query:
+                tree.set_filter_query(tab_state.filter_query)
+            pane = TabPane(tab_state.display_title, tree, id=f"pane-{tab_state.id}")
+            content_widget.add_pane(pane).call_next(self)
+            self._tree_widgets[tab_state.id] = tree
+
+        self._sync_active_widgets()
+        self._update_footer()
+        active_tree = self.get_active_tree()
+        if active_tree:
+            active_tree.focus()
+
+    def _sync_active_widgets(self) -> None:
+        """Keep tabs and content panes aligned with the active tab state."""
+        if not self.tab_manager.tabs:
+            return
+
+        active_tab_id = self.tab_manager.active_tab.id
+        tabs_widget = self.query_one("#directory-tabs", Tabs)
+        content_widget = self.query_one("#directory-content", TabbedContent)
+        tabs_widget.active = f"tab-{active_tab_id}"
+        content_widget.active = f"pane-{active_tab_id}"
     
     def add_tab(self, path: Optional[Path] = None) -> str:
         """Add a new tab.
@@ -132,10 +147,11 @@ class TabbedDirectoryTree(Vertical):
         """
         success = self.tab_manager.switch_to_tab(index)
         if success:
-            tabs_widget = self.query_one("#directory-tabs", Tabs)
-            active_tab = self.tab_manager.active_tab
-            tabs_widget.active = f"tab-{active_tab.id}"
+            self._sync_active_widgets()
             self._update_footer()
+            active_tree = self.get_active_tree()
+            if active_tree:
+                active_tree.focus()
         return success
     
     def switch_to_tab_by_id(self, tab_id: str) -> bool:
@@ -149,9 +165,11 @@ class TabbedDirectoryTree(Vertical):
         """
         success = self.tab_manager.switch_to_tab_by_id(tab_id)
         if success:
-            tabs_widget = self.query_one("#directory-tabs", Tabs)
-            tabs_widget.active = f"tab-{tab_id}"
+            self._sync_active_widgets()
             self._update_footer()
+            active_tree = self.get_active_tree()
+            if active_tree:
+                active_tree.focus()
         return success
     
     def next_tab(self) -> bool:
@@ -162,10 +180,11 @@ class TabbedDirectoryTree(Vertical):
         """
         success = self.tab_manager.next_tab()
         if success:
-            tabs_widget = self.query_one("#directory-tabs", Tabs)
-            active_tab = self.tab_manager.active_tab
-            tabs_widget.active = f"tab-{active_tab.id}"
+            self._sync_active_widgets()
             self._update_footer()
+            active_tree = self.get_active_tree()
+            if active_tree:
+                active_tree.focus()
         return success
     
     def previous_tab(self) -> bool:
@@ -176,10 +195,11 @@ class TabbedDirectoryTree(Vertical):
         """
         success = self.tab_manager.previous_tab()
         if success:
-            tabs_widget = self.query_one("#directory-tabs", Tabs)
-            active_tab = self.tab_manager.active_tab
-            tabs_widget.active = f"tab-{active_tab.id}"
+            self._sync_active_widgets()
             self._update_footer()
+            active_tree = self.get_active_tree()
+            if active_tree:
+                active_tree.focus()
         return success
     
     def get_active_tree(self) -> Optional[FilterableDirectoryTree]:
@@ -206,13 +226,21 @@ class TabbedDirectoryTree(Vertical):
             path: New path for the active tab.
         """
         self.tab_manager.update_active_tab(path=path)
-        
-        # Update the tree widget
+
         active_tree = self.get_active_tree()
         if active_tree:
-            active_tree.path = str(path)
-        
-        # Update tab title
+            # Update path without triggering async reactive watchers directly.
+            active_tree.set_reactive(FilterableDirectoryTree.path, path)
+            root_data_type = type(active_tree.root.data)
+            active_tree.reset_node(
+                active_tree.root,
+                str(path),
+                root_data_type(active_tree.PATH(path)),
+            )
+            active_tree.reload()
+        else:
+            self._rebuild_tabs()
+
         self._update_tab_title(self.tab_manager.active_tab.id)
         self._update_footer()
     
@@ -258,14 +286,13 @@ class TabbedDirectoryTree(Vertical):
         if not tab:
             return
         
-        tabs_widget = self.query_one("#directory-tabs", Tabs)
-        tab_widget = tabs_widget.get_pane(f"tab-{tab_id}")
-        
-        if tab_widget:
-            title = tab.display_title
-            if tab.is_locked:
-                title = f"🔒 {title}"
-            tab_widget.update(title)
+        title = tab.display_title
+        if tab.is_locked:
+            title = f"🔒 {title}"
+
+        tab_widgets = list(self.query(f"#tab-{tab_id}", Tab))
+        if tab_widgets:
+            tab_widgets[0].update(title)
     
     def _update_footer(self) -> None:
         """Update the footer with current tab information."""
@@ -296,6 +323,8 @@ class TabbedDirectoryTree(Vertical):
         # Extract tab ID from the tab widget ID
         tab_id = event.tab.id.replace("tab-", "")
         self.tab_manager.switch_to_tab_by_id(tab_id)
+        content_widget = self.query_one("#directory-content", TabbedContent)
+        content_widget.active = f"pane-{tab_id}"
         self._update_footer()
         
         # Focus the active tree

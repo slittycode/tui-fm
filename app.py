@@ -306,10 +306,7 @@ class FileManagerApp(App):
         
         self._apply_layout_mode(self.size.width)
         self._set_status(f"Ready | Root: {self.current_path}")
-        tabbed_tree = self.query_one("#tree", TabbedDirectoryTree)
-        active_tree = tabbed_tree.get_active_tree()
-        if active_tree:
-            active_tree.focus()
+        self.call_after_refresh(self._focus_active_tree)
 
     def on_resize(self, event: Resize) -> None:
         """Re-evaluate layout when the terminal size changes."""
@@ -457,6 +454,21 @@ class FileManagerApp(App):
         if target.is_absolute():
             return target.resolve()
         return (base_path / target).resolve()
+
+    def _focus_active_tree(self) -> None:
+        """Focus the active tree widget when available."""
+        tabbed_tree = self.query_one("#tree", TabbedDirectoryTree)
+        active_tree = tabbed_tree.get_active_tree()
+        if active_tree:
+            active_tree.focus()
+
+    def _get_active_root_path(self) -> Path:
+        """Return the active root path with a safe fallback."""
+        try:
+            tabbed_tree = self.query_one("#tree", TabbedDirectoryTree)
+            return tabbed_tree.get_active_path()
+        except (AttributeError, ValueError):
+            return self.current_path
 
     def _refresh_after_operation(self) -> None:
         """Refresh tree after a state change without replacing result feedback."""
@@ -1514,11 +1526,7 @@ class FileManagerApp(App):
         self._clear_delete_confirmation()
         self.help_visible = False
         
-        try:
-            tabbed_tree = self.query_one("#tree", TabbedDirectoryTree)
-            current_path = Path(tabbed_tree.current_path)
-        except (AttributeError, ValueError):
-            current_path = self.current_path
+        current_path = self._get_active_root_path()
         
         if not current_path.exists():
             self._set_status("Path does not exist")
@@ -1592,11 +1600,7 @@ class FileManagerApp(App):
         self._clear_delete_confirmation()
         self.help_visible = False
         
-        try:
-            tabbed_tree = self.query_one("#tree", TabbedDirectoryTree)
-            current_path = Path(tabbed_tree.current_path)
-        except (AttributeError, ValueError):
-            current_path = self.current_path
+        current_path = self._get_active_root_path()
         
         # Update Git service path
         self.enhanced_git_service = EnhancedGitService(current_path)
@@ -1635,11 +1639,7 @@ class FileManagerApp(App):
         self._clear_delete_confirmation()
         self.help_visible = False
         
-        try:
-            tabbed_tree = self.query_one("#tree", TabbedDirectoryTree)
-            current_path = Path(tabbed_tree.current_path)
-        except (AttributeError, ValueError):
-            current_path = self.current_path
+        current_path = self._get_active_root_path()
         
         # Update Git service path
         self.enhanced_git_service = EnhancedGitService(current_path)
@@ -1698,11 +1698,7 @@ class FileManagerApp(App):
         self._clear_delete_confirmation()
         self.help_visible = False
         
-        try:
-            tabbed_tree = self.query_one("#tree", TabbedDirectoryTree)
-            current_path = Path(tabbed_tree.current_path)
-        except (AttributeError, ValueError):
-            current_path = self.current_path
+        current_path = self._get_active_root_path()
         
         # Update Git service path
         self.enhanced_git_service = EnhancedGitService(current_path)

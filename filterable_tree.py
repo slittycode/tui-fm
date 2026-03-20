@@ -194,17 +194,13 @@ class FilterableDirectoryTree(DirectoryTree):
         
         return label
 
-    def render_label(self, path: Path) -> Text:
-        """Override to render labels with Git status indicators.
-        
-        Args:
-            path: Path to render label for.
-            
-        Returns:
-            Text object with Git status indicator and filename.
-        """
+    def render_label(self, node, base_style, style) -> Text:
+        """Render labels with Git status indicators using Textual's current API."""
         # Clear expired cache entries periodically
         if len(self._git_status_cache) > 100:  # Clear cache if it gets too large
             self._clear_expired_cache()
-        
-        return self._render_label_with_git_status(path)
+
+        path = node.data.path
+        label = self._render_label_with_git_status(path)
+        label.stylize(style)
+        return label

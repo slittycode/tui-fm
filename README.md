@@ -76,6 +76,11 @@ Or if installed via pip:
 tui-fm
 ```
 
+Browse any location after launch:
+- Press `g` to open "Go to folder"
+- Enter an absolute path (for example `/Volumes/MyDrive`), a relative path, or `~/...`
+- Press `Enter` to switch the active tab root
+
 ## Keyboard Shortcuts
 
 ### Navigation
