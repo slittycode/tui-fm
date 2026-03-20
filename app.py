@@ -207,13 +207,11 @@ class FileManagerApp(App):
 
     .image-preview {
         color: $text;
-        font-family: monospace;
-        line-height: 1;
     }
 
     .image-info {
         color: $text-muted;
-        font-style: italic;
+        text-style: italic;
     }
     """
 
@@ -1399,7 +1397,13 @@ class FileManagerApp(App):
         current_theme = self.theme_manager.get_current_theme()
         if current_theme:
             css = self.theme_manager.generate_css(current_theme)
-            self.styles.css = css
+            # Textual 8 removed RenderStyles.css assignment; update via stylesheet source.
+            self.stylesheet.add_source(
+                css,
+                read_from=("runtime-theme.tcss", ""),
+                tie_breaker=1000,
+            )
+            self.stylesheet.update(self)
 
     def action_next_theme(self) -> None:
         """Switch to the next theme."""

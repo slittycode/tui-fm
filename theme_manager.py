@@ -350,7 +350,7 @@ Switch.--on {{
 
 .syntax-comment {{
     color: {colors.text_muted};
-    font-style: italic;
+    text-style: italic;
 }}
 
 .syntax-keyword {{
@@ -371,42 +371,6 @@ Switch.--on {{
     text-style: bold;
 }}
 
-/* Scrollbar */
-::-webkit-scrollbar {{
-    background: {colors.panel};
-    width: 1;
-}}
-
-::-webkit-scrollbar-track {{
-    background: {colors.panel};
-}}
-
-::-webkit-scrollbar-thumb {{
-    background: {colors.border_highlight};
-}}
-
-::-webkit-scrollbar-thumb:hover {{
-    background: {colors.border};
-}}
-
-/* Responsive layout */
-@media (max-width: 100) {{
-    #main-container {{
-        layout: vertical;
-    }}
-    
-    #left-pane {{
-        width: 100%;
-        height: 50%;
-        border-right: none;
-        border-bottom: solid {colors.border};
-    }}
-    
-    #right-pane {{
-        width: 100%;
-        height: 50%;
-    }}
-}}
 """
         
         return css.strip()
