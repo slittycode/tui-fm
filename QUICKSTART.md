@@ -195,7 +195,10 @@ Kiro is for **visual navigation + quick operations**.
 
 **"tui-fm command not found"**
 ```bash
-# Restart terminal or:
+# Install the app in your active venv, then restart terminal if needed:
+pip install -e '.[dev]'
+
+# If shell command still isn't available:
 source ~/.zshrc
 ```
 
@@ -274,4 +277,3 @@ The answer determines if it's worth keeping. Simple as that.
 ---
 
 **TUI File Manager** - Fast, beautiful, terminal-based file management.
-

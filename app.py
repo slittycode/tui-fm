@@ -233,7 +233,7 @@ class FileManagerApp(App):
         Binding("escape", "clear_selection", "Clear", show=False),
         Binding("b", "bookmark_current", "Bookmark", key_display="b"),
         Binding("B", "browse_bookmarks", "Bookmarks", key_display="B"),
-        Binding(",", "open_config", "Config", key_display=","),
+        Binding("comma", "open_config", "Config", key_display=","),
         Binding("ctrl+t", "new_tab", "New Tab", show=False),
         Binding("ctrl+w", "close_tab", "Close Tab", show=False),
         Binding("ctrl+tab", "next_tab", "Next Tab", show=False),

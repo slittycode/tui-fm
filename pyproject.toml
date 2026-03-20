@@ -38,6 +38,8 @@ classifiers = [
 dependencies = [
     "textual>=0.47.0",
     "rich>=13.7.0",
+    "pillow>=10.0.0",
+    "rapidfuzz>=3.0.0",
 ]
 
 [project.optional-dependencies]
@@ -54,10 +56,10 @@ dev = [
 tui-fm = "main:main"
 
 [project.urls]
-Homepage = "https://github.com/user/tui-fm"
-Repository = "https://github.com/user/tui-fm.git"
-Issues = "https://github.com/user/tui-fm/issues"
-Changelog = "https://github.com/user/tui-fm/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/slittycode/tui-fm"
+Repository = "https://github.com/slittycode/tui-fm.git"
+Issues = "https://github.com/slittycode/tui-fm/issues"
+Changelog = "https://github.com/slittycode/tui-fm/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 where = ["."]

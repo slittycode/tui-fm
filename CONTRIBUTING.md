@@ -3,15 +3,15 @@
 ## Setup
 - Create a virtual environment: `python3 -m venv venv`
 - Activate it: `source venv/bin/activate`
-- Install dependencies: `pip install -r requirements.txt`
+- Install dependencies (canonical): `pip install -e .[dev]`
+- Optional pinned workflow: `pip install -r requirements.txt`
 
 ## Run
 - Preferred: `python main.py`
-- Alternate: `./run.sh`
+- Alternate: `tui-fm` or `./run.sh`
 
 ## Tests
-- Current tests are minimal and manual-like.
-- For new behavior, add automated tests and run them with: `./venv/bin/python -m unittest`
+- Add automated tests for new behavior and run them with: `python -m pytest tests/ -q`
 
 ## Change Guidelines
 - Keep changes small and targeted.
@@ -31,4 +31,3 @@
 - Do not touch files outside the repo directory.
 - Do not auto-generate large refactors without explicit approval.
 - Do not add network calls or external services.
-

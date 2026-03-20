@@ -477,7 +477,7 @@ class TestFuzzySearchService:
             assert results == []
     
     def test_debounce_timing(self) -> None:
-        """Test debounce timing functionality."""
+        """Test debounce logic triggers a sleep for rapid consecutive searches."""
         service = FuzzySearchService()
         service.debounce_delay = 0.01  # 10ms debounce
         
@@ -487,11 +487,10 @@ class TestFuzzySearchService:
         
         with tempfile.TemporaryDirectory() as temp_dir:
             Path(temp_dir).joinpath("test.txt").touch()
-            
-            start_time = time.time()
-            
-            # This should trigger the debounce delay
-            service.search_files("test", [Path(temp_dir)])
-            
-            elapsed = time.time() - start_time
-            assert elapsed >= 0.01  # Should have waited at least the debounce delay
+
+            # Simulate a recent prior search so debounce should sleep.
+            service.last_search_time = time.time()
+
+            with patch("fuzzy_search_service.time.sleep") as mock_sleep:
+                service.search_files("test", [Path(temp_dir)])
+                mock_sleep.assert_called_once_with(service.debounce_delay)

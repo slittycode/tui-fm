@@ -2,7 +2,7 @@
 
 A modern terminal-based file manager built with Python and Textual.
 
-[![CI](https://github.com/user/tui-fm/actions/workflows/ci.yml/badge.svg)](https://github.com/user/tui-fm/actions/workflows/ci.yml)
+[![CI](https://github.com/slittycode/tui-fm/actions/workflows/ci.yml/badge.svg)](https://github.com/slittycode/tui-fm/actions/workflows/ci.yml)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Tests](https://img.shields.io/badge/tests-71%20passing-brightgreen.svg)](tests/)
@@ -34,7 +34,7 @@ A modern terminal-based file manager built with Python and Textual.
 
 ```bash
 # Clone the repository
-git clone https://github.com/user/tui-fm.git
+git clone https://github.com/slittycode/tui-fm.git
 cd tui-fm
 
 # Create virtual environment
@@ -43,11 +43,11 @@ python3 -m venv venv
 # Activate it
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-# Install dependencies
-pip install -r requirements.txt
+# Install package + development dependencies from pyproject.toml
+pip install -e .[dev]
 
-# Install the package (optional)
-pip install -e .
+# Optional: install from requirements.txt for local pinned workflows
+pip install -r requirements.txt
 ```
 
 ### From PyPI (Coming Soon)
@@ -151,8 +151,8 @@ open htmlcov/index.html
 ## Development
 
 ```bash
-# Install development dependencies
-pip install -r requirements.txt
+# Install development dependencies (canonical source: pyproject.toml)
+pip install -e .[dev]
 
 # Install pre-commit hooks
 pre-commit install

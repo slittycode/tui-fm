@@ -223,11 +223,14 @@ nano ~/.tui_fm_config.json
 
 ### Development
 ```bash
+# Install dependencies from project metadata
+pip install -e '.[dev]'
+
 # Install pre-commit hooks
 pre-commit install
 
 # Run tests
-pytest tests/ -v
+python -m pytest tests/ -v
 
 # Run linting
 ruff check .
